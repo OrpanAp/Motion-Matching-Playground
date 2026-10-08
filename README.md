@@ -145,12 +145,10 @@ Three.js handles the 3D scene, rendering, skeleton/model representation, animati
 
 ## Project structure
 
-\`\`\`
 Motion-Matching-Playground/
 ├── index.html
 ├── THIRD-PARTY-NOTICES.txt
 └── README.md
-\`\`\`
 
 The current playground is intentionally self-contained: the application logic, UI and runtime are contained in \`index.html\`.
 
