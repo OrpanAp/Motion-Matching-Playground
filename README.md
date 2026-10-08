@@ -1,215 +1,355 @@
 # Motion Matching Playground
 
-A browser-based experimental **motion matching** playground built with vanilla JavaScript and [Three.js](https://threejs.org/).
+A browser-based experimental **motion matching playground** built with vanilla JavaScript and [Three.js](https://threejs.org/).
 
-The playground lets you load your own animation clips and a compatible rigged 3D character directly in the browser, build a motion database from the loaded clips, and interactively select animation frames based on the character's desired movement trajectory and current pose.
-
-> **Asset note:** This repository does not bundle a motion-capture dataset or character assets. Animation and model files are supplied by the user at runtime. Only use assets that you own or have permission to use and redistribute.
+Load your own animation clips and a compatible 3D character model, then experiment with real-time motion matching, trajectory prediction, feature weighting, animation switching, and inertialization directly in the browser.
 
 ## Features
 
-- 🎞️ Load multiple **BVH** or **FBX** animation clips.
-- 🧍 Load a compatible **GLB** or **FBX** rigged/skinned character model.
-- 🧠 Runtime motion database and nearest-frame matching.
-- 📐 27-dimensional motion features combining:
-  - foot positions,
-  - foot/hip velocities,
-  - future trajectory positions,
-  - future trajectory facing.
-- 🎯 Configurable feature weights for pose, velocity, trajectory position, and trajectory direction.
-- 🔄 Configurable animation switch threshold.
-- 🫧 Optional inertialization for smoother transitions.
-- ⏱️ Adjustable motion-search interval.
-- 🎮 Keyboard controls with **WASD** and **arrow keys**.
-- 🏃 Hold **Shift** to run.
-- 📱 Touch controls with a virtual joystick and **RUN** button.
-- 🦴 Optional stick-figure skeleton visualization.
-- 👤 Optional 3D model visualization.
-- 📍 Visual comparison between the desired trajectory and the trajectory of the matched frame.
-- 🌙 Light/dark appearance based on the system theme.
-- 📱 Responsive layout for desktop and touch devices.
-- 🖱️ Drag-and-drop support for BVH/FBX animation files.
-- 🔒 Processing happens locally in the browser; selected assets are not uploaded by the application.
+- Real-time motion matching
+- Load multiple **BVH / FBX** animation clips
+- Load **GLB / FBX** character models
+- Runtime motion database generation
+- Nearest-frame motion matching
+- Foot position and velocity features
+- Hip/root velocity features
+- Future trajectory prediction
+- Future trajectory facing direction
+- Configurable feature weights
+- Configurable motion-switch threshold
+- Optional inertialization for smoother transitions
+- Desired vs matched trajectory visualization
+- Stick-figure skeleton visualization
+- Responsive desktop and mobile interface
+- Keyboard and touch controls
+- Light/dark interface support
+- Drag-and-drop animation loading
+- Browser-local processing of user-supplied assets
 
-## How motion matching works
+## How It Works
 
-The playground converts the loaded animation clips into a searchable motion database.
+The playground builds a motion database from the animation clips supplied by the user.
 
-For each frame, it extracts motion information such as:
+At runtime, the system continuously:
 
-1. Character/foot positions.
-2. Foot and hip velocity information.
-3. Future trajectory positions.
-4. Future trajectory facing directions.
+1. Reads player movement input.
+2. Generates a desired future trajectory.
+3. Extracts motion features.
+4. Compares the desired motion against available database frames.
+5. Finds the closest matching frame.
+6. Switches to the selected animation frame when appropriate.
+7. Smooths the transition using inertialization when enabled.
 
-The runtime creates a desired trajectory from the player's current input and compares it against the stored features. A weighted nearest-frame search then selects a candidate frame whose motion best matches the requested movement.
+The current feature representation uses:
 
-The main matching controls are exposed in the UI:
+- Foot positions
+- Foot velocities
+- Hip/root velocity
+- Future trajectory positions
+- Future trajectory facing directions
 
-| Parameter | Purpose |
-| --- | --- |
-| **Pose match** | Controls the importance of pose similarity. |
-| **Velocity match** | Controls the importance of velocity similarity. |
-| **Trajectory position** | Controls how strongly future movement position affects matching. |
-| **Trajectory facing** | Controls how strongly future facing direction affects matching. |
-| **Switch threshold** | Controls how readily the system changes to another animation frame. |
-| **Inertialization half-life** | Controls transition smoothing. |
-| **Search interval** | Controls how frequently the motion database is searched. |
-| **Camera distance** | Controls the viewing distance. |
+The matching system allows different feature groups to be weighted independently.
 
-The playground also handles animation clip boundaries so playback can loop within a clip rather than continuing into unrelated frames.
+## Motion Matching Configuration
+
+| Parameter | Description |
+|---|---|
+| Pose Weight | Controls the influence of pose-related features |
+| Velocity Weight | Controls the influence of velocity features |
+| Trajectory Position Weight | Controls future position matching |
+| Trajectory Direction Weight | Controls future facing matching |
+| Switch Threshold | Determines when a new animation frame should be selected |
+| Inertialization | Smooths transitions between matched poses |
+| Search Interval | Controls how frequently the motion database is searched |
+
+The current feature representation contains **27 dimensions** covering pose, velocity, and future trajectory information.
 
 ## Controls
 
-### Desktop
+### Keyboard
 
-| Input | Action |
-| --- | --- |
-| \`W\` / \`↑\` | Move forward |
-| \`S\` / \`↓\` | Move backward |
-| \`A\` / \`←\` | Move left |
-| \`D\` / \`→\` | Move right |
-| \`Shift\` | Run |
+| Key | Action |
+|---|---|
+| `W` / `↑` | Move forward |
+| `S` / `↓` | Move backward |
+| `A` / `←` | Move left |
+| `D` / `→` | Move right |
+| `Shift` | Run |
 
-### Touch devices
+### Touch
 
-- Drag the virtual joystick to move.
-- Hold **RUN** to run.
-- The joystick and RUN control appear automatically on touch/coarse-pointer devices.
+On touch-enabled devices:
 
-## Loading assets
+- Use the virtual joystick to control movement.
+- Use the **RUN** button to increase movement speed.
 
-### Animations
+## Loading Animations
 
-Use:
+The animation loader supports:
 
-- \`.bvh\`
-- \`.fbx\`
+- `.bvh`
+- `.fbx`
 
-You can select multiple animation files at once or drag BVH/FBX files onto the viewport.
+Multiple animation clips can be loaded into the same motion database.
 
-For reliable matching, animation clips loaded into the same session should use the **same skeleton or a compatible skeleton hierarchy**.
+When loading multiple files, the clips should use the **same or compatible skeleton structure**.
 
-When loading many clips, the optional **walk / run / sprint preference** can be enabled to prioritize locomotion-oriented clips.
+For best results, use clips representing different locomotion states such as:
 
-### Character model
+- Walk
+- Run
+- Sprint
+- Directional movement
+- Turning
+- Starting
+- Stopping
 
-Use:
+## Loading a Character Model
 
-- \`.glb\`
-- \`.fbx\`
+The playground supports:
 
-The model should be a rigged/skinned character with a recognizable root/hips joint.
+- `.glb`
+- `.fbx`
 
-The runtime attempts to map equivalent skeleton joints using normalized bone names and controlled aliases. This allows compatible skeleton naming variations to be handled without requiring one specific asset provider.
+The character is automatically inspected for common skeleton and bone naming conventions.
 
-## Running locally
+Compatible rigs are mapped using normalized bone names and common aliases where possible.
 
-This is a static browser application and does not require Node.js, PHP, a database, or a build step.
+Because character rigs differ between assets, **retargeting is not guaranteed for every model**.
 
-### Option 1 — Open directly
+## Trajectory Visualization
 
-Open \`index.html\` in a modern browser.
+The playground provides visual feedback for the desired and matched movement trajectories.
 
-### Option 2 — Use a local web server
+The visualization includes:
 
-For the most reliable browser behavior, serve the directory with any static HTTP server.
+- Desired trajectory
+- Matched trajectory
+- Current character/root position
+- Future movement direction
 
-For example, with PHP installed:
-
-\`\`\`bash
-php -S localhost:8000
-\`\`\`
-
-Then open:
-
-\`\`\`
-http://localhost:8000
-\`\`\`
-
-No server-side application code is required.
+This makes it easier to understand why the motion matcher selected a particular animation frame.
 
 ## Technology
 
-- **HTML5**
-- **CSS3**
-- **Vanilla JavaScript**
-- **Three.js r128**
-- Three.js:
-  - \`BVHLoader\`
-  - \`FBXLoader\`
-  - \`GLTFLoader\`
-- \`fflate\` through the Three.js example-loader dependency
+The project is intentionally lightweight and runs directly in the browser.
 
-Three.js handles the 3D scene, rendering, skeleton/model representation, animation data and file-loader functionality.
+### Core
 
-## Project structure
+- HTML5
+- CSS3
+- JavaScript
+- Three.js r128
 
+### Three.js Components
+
+The project uses Three.js loaders for:
+
+- BVH
+- FBX
+- GLTF / GLB
+
+Additional browser-side compression support is provided by `fflate`.
+
+## Running Locally
+
+No build system is required.
+
+You can serve the project using any local HTTP server.
+
+For PHP users:
+
+```bash
+php -S localhost:8000
+```
+
+Then open:
+
+```text
+http://localhost:8000
+```
+
+Using a local HTTP server is recommended instead of opening the HTML file directly.
+
+## Project Structure
+
+```text
 Motion-Matching-Playground/
 ├── index.html
 ├── THIRD-PARTY-NOTICES.txt
 └── README.md
+```
 
-The current playground is intentionally self-contained: the application logic, UI and runtime are contained in \`index.html\`.
+### `index.html`
 
-## Browser requirements
+Contains the main browser application, including:
 
-A modern browser with WebGL support is recommended.
+- User interface
+- Responsive styling
+- Three.js scene
+- Animation loading
+- Motion database generation
+- Feature extraction
+- Motion matching
+- Character/model handling
+- Keyboard controls
+- Touch controls
+- Trajectory visualization
 
-The application uses:
+### `THIRD-PARTY-NOTICES.txt`
 
-- WebGL rendering,
-- File API / ArrayBuffer,
-- Pointer Events for touch controls,
-- modern JavaScript features.
+Contains notices relating to third-party software used by the project.
 
-Chrome, Edge, Firefox and other current browsers should provide the required platform features.
+### `README.md`
 
-## Performance notes
+Project documentation, setup instructions, and technical information.
 
-Motion matching is performed in JavaScript at runtime. Search cost depends on the number of animation frames loaded into the motion database.
+## Motion Matching Pipeline
 
-For smoother performance:
+```text
+Player Input
+     │
+     ▼
+Desired Movement
+     │
+     ▼
+Future Trajectory
+     │
+     ▼
+Feature Generation
+     │
+     ▼
+Motion Database Search
+     │
+     ▼
+Feature Distance Comparison
+     │
+     ▼
+Best Matching Frame
+     │
+     ▼
+Animation Transition
+     │
+     ▼
+Inertialization
+     │
+     ▼
+Character Motion
+```
 
-- Prefer reasonably sized animation sets.
-- Avoid loading unnecessarily large numbers of clips at once.
-- Increase **Search interval** if matching is too CPU-intensive.
-- Adjust the feature weights according to the movement style of your animation set.
-- Use compatible clips with consistent skeleton structure and scale.
+## Feature Matching
 
-## Asset and licensing policy
+The motion matcher compares the desired motion state with motion frames stored in the runtime database.
 
-The source code in this repository is separate from the animation/model assets loaded into the application.
+The matching cost can be influenced by four main feature groups:
 
-**No third-party motion-capture dataset or character asset is bundled with the project.**
+```text
+Matching Cost
+│
+├── Pose
+├── Velocity
+├── Future Position
+└── Future Direction
+```
 
-If you publish a deployment containing animation or character files, verify that their licenses permit the intended use and redistribution. In particular, do not assume that an animation available for research, personal use, or download is automatically suitable for commercial portfolio deployment.
+This makes it possible to experiment with how different aspects of motion influence animation selection.
 
-Third-party runtime libraries retain their respective licenses and notices. See [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+## Important Notes
 
-## Limitations
+This project is an **experimental browser-based implementation** intended for learning, experimentation, demonstration, and portfolio presentation.
 
-This is an experimental browser implementation rather than a production animation system.
+It is not intended to be a production-ready motion matching system.
 
 Current limitations include:
 
-- Matching quality depends heavily on the supplied animation set.
-- Clips in one motion database should use compatible skeletons.
-- Runtime brute-force searching can become expensive with very large databases.
-- Automatic skeleton retargeting cannot guarantee correct results for every rig.
-- The system does not provide a full offline asset-management pipeline.
-- Advanced production techniques such as learned motion matching, large-scale indexing structures, contact solving, or full foot-locking are outside the current scope.
+- Motion searches are performed at runtime.
+- Large animation databases can increase CPU usage.
+- Retargeting depends on skeleton compatibility.
+- Different rigs may require additional bone mapping.
+- There is no production-level acceleration structure for extremely large databases.
+- Advanced contact solving is not implemented.
+- Dedicated foot locking is not implemented.
+- Motion quality depends heavily on the animation data supplied by the user.
 
-## Why this project?
+## Assets and Licensing
 
-This project is intended as an interactive exploration of the core ideas behind motion matching:
+This repository does **not bundle a third-party motion-capture dataset or character asset collection**.
 
-**player input → desired trajectory → feature comparison → nearest motion frame → smooth transition**
+Animation and character files are supplied by the user at runtime.
 
-It is designed to make the process inspectable and adjustable directly in the browser rather than hiding the matching process behind a prebuilt animation controller.
+You are responsible for ensuring that you have the necessary rights and licenses for any animation, motion-capture, character, or other assets you load into the playground.
+
+Third-party libraries remain subject to their respective licenses.
+
+See:
+
+```text
+THIRD-PARTY-NOTICES.txt
+```
+
+for project notices.
+
+## Browser Processing
+
+Animation and model files supplied through the interface are processed by the browser for the motion-matching session.
+
+The core motion-matching process does not require those user-supplied assets to be uploaded to a remote server.
+
+## Why This Project?
+
+Motion matching is a character-animation technique that selects animation poses based on the character's current state and desired future movement.
+
+This playground provides a lightweight environment for experimenting with those concepts without requiring a full game engine.
+
+It can be useful for exploring:
+
+- Motion matching algorithms
+- Animation search
+- Trajectory prediction
+- Feature engineering
+- Animation blending
+- Character locomotion
+- Runtime animation systems
+
+## Future Improvements
+
+Potential future improvements include:
+
+- Faster motion database indexing
+- KD-tree or other spatial indexing
+- Improved animation blending
+- Foot locking
+- Contact detection
+- More advanced trajectory prediction
+- Improved skeleton normalization
+- Improved FBX retargeting
+- Animation database visualization
+- Performance profiling
+- Larger motion databases
+- More sophisticated locomotion states
+
+## Third-Party Dependencies
+
+The project currently uses browser-hosted third-party libraries including:
+
+- Three.js
+- Three.js BVHLoader
+- Three.js GLTFLoader
+- Three.js FBXLoader
+- fflate
+
+See `THIRD-PARTY-NOTICES.txt` for applicable third-party notices and licensing information.
 
 ## License
 
-Unless a separate license is added to this repository, the project source code is provided as an experimental portfolio/demo project. Third-party dependencies remain under their own licenses.
+The project source code is provided for experimentation, educational use, and portfolio presentation.
 
-If you plan to reuse or redistribute the project, review the dependency notices and the licenses of every animation/model asset included in your deployment.
+Third-party libraries, animation files, character models, and other external assets remain subject to their own licenses.
+
+Do not redistribute third-party animation datasets or character assets unless their licenses explicitly permit redistribution.
+
+---
+
+**Motion Matching Playground**
+
+A browser-based experiment in real-time animation matching and trajectory-driven locomotion.
