@@ -1,0 +1,2 @@
+Motion Matching Playground
+A browser-based experimental implementation of motion matching. Animation and character files are user-provided; no third-party motion dataset is bundled with this demo.
