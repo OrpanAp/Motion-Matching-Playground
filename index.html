@@ -1,0 +1,3034 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+
+    <title>Motion Matching Playground</title>
+
+    <meta
+      name="description"
+      content="Browser-based motion matching playground for user-supplied animation and 3D model files."
+    />
+
+    <style>
+      :root {
+        --bg: #fff;
+        --fg: #1a1a1a;
+        --mut: #666;
+        --card: #f1f1ee;
+        --bd: #d6d6d0;
+        --ac: #2f6fe0;
+
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #16171a;
+          --fg: #ececec;
+          --mut: #9a9a9a;
+          --card: #202226;
+          --bd: #35373d;
+          --ac: #6ea2ff;
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #16171a;
+        --fg: #ececec;
+        --mut: #9a9a9a;
+        --card: #202226;
+        --bd: #35373d;
+        --ac: #6ea2ff;
+      }
+
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: inherit;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.5 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+
+      .mut {
+        color: var(--mut);
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+
+      .btn {
+        background: var(--ac);
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        border: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+      }
+
+      #view {
+        position: relative;
+        height: 56vh;
+        min-height: 300px;
+        border: 1px solid var(--bd);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--card);
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      #pad,
+      #runb {
+        position: absolute;
+        display: none;
+        border-radius: 50%;
+        background: rgba(127, 127, 127, 0.2);
+        border: 2px solid rgba(127, 127, 127, 0.5);
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      #pad {
+        left: 14px;
+        bottom: 14px;
+        width: 130px;
+        height: 130px;
+      }
+
+      #nub {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 54px;
+        height: 54px;
+        margin: -27px 0 0 -27px;
+        border-radius: 50%;
+        background: var(--ac);
+        opacity: 0.85;
+        pointer-events: none;
+      }
+
+      #runb {
+        right: 16px;
+        bottom: 34px;
+        width: 80px;
+        height: 80px;
+        color: var(--fg);
+        font:
+          700 14px system-ui,
+          sans-serif;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #runb.on {
+        background: var(--ac);
+        color: #fff;
+      }
+
+      .touch #pad,
+      .touch #runb {
+        display: flex;
+      }
+
+      @media (pointer: coarse) {
+        #pad,
+        #runb {
+          display: flex;
+        }
+      }
+
+      #hud {
+        font:
+          12px/1.4 ui-monospace,
+          Menlo,
+          monospace;
+        margin: 6px 0;
+        min-height: 17px;
+      }
+
+      #ctl {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px 18px;
+        margin: 10px 0;
+      }
+
+      .sl {
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+      }
+
+      .sl input {
+        width: 100%;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 4px;
+      }
+
+      ul {
+        margin: 6px 0;
+        padding-left: 20px;
+      }
+
+      .asset-note {
+        margin-top: 10px;
+        padding: 9px 11px;
+        border: 1px solid var(--bd);
+        border-radius: 8px;
+        background: var(--card);
+        font-size: 12px;
+        color: var(--mut);
+      }
+
+      .status-error {
+        color: #d33;
+      }
+
+      .status-ok {
+        color: #27854a;
+      }
+
+      @media (max-width: 600px) {
+        main {
+          padding: 12px;
+        }
+
+        #view {
+          height: 62vh;
+          min-height: 320px;
+        }
+
+        .row {
+          align-items: stretch;
+        }
+
+        .btn {
+          width: 100%;
+        }
+
+        #status,
+        #mstatus {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <h1>Motion Matching Playground</h1>
+
+      <p class="mut" style="margin: 0">
+        Load your own animation files (BVH / FBX) and steer with
+        <b>WASD / arrows</b>. Hold <b>Shift</b> to run. On touch devices, use
+        the virtual stick and <b>RUN</b> button. All animation clips loaded into
+        one session should use the same skeleton.
+      </p>
+
+      <div class="asset-note">
+        This playground processes animation and model files supplied by the user
+        at runtime. No motion-capture dataset is bundled with this page.
+      </div>
+
+      <div class="row">
+        <label class="btn">
+          Load animations (BVH / FBX)
+          <input id="file" type="file" accept=".bvh,.fbx" multiple hidden />
+        </label>
+
+        <label
+          class="btn"
+          style="
+            background: var(--card);
+            color: var(--fg);
+            border: 1px solid var(--bd);
+          "
+        >
+          Load model (GLB / FBX)
+          <input id="mfile" type="file" accept=".glb,.fbx" hidden />
+        </label>
+
+        <span id="status" class="mut"> No animation data loaded </span>
+
+        <span id="mstatus" class="mut"></span>
+      </div>
+
+      <div id="view">
+        <canvas id="c"></canvas>
+
+        <div id="pad">
+          <div id="nub"></div>
+        </div>
+
+        <div id="runb">RUN</div>
+      </div>
+
+      <div id="hud" class="mut"></div>
+
+      <p class="mut" style="font-size: 13px; margin: 4px 0">
+        <span class="dot" style="background: #ff4d4d"></span>
+
+        desired trajectory &nbsp;&nbsp;
+
+        <span class="dot" style="background: #35c46a"></span>
+
+        trajectory of the matched frame
+      </p>
+
+      <label>
+        <input type="checkbox" id="inert" checked />
+        Inertialization
+      </label>
+
+      <br />
+
+      <label>
+        <input type="checkbox" id="loco" checked />
+        When loading many files, prefer walk / run / sprint clips
+      </label>
+
+      <br />
+
+      <label>
+        <input type="checkbox" id="showStick" checked />
+        Stick figure
+      </label>
+
+      &nbsp;
+
+      <label>
+        <input type="checkbox" id="showModel" checked />
+        Model
+      </label>
+
+      <div id="ctl"></div>
+
+      <ul class="mut" style="font-size: 13px">
+        <li>
+          Raise <b>Trajectory position</b> for faster response. Raise
+          <b>Pose match</b> for stronger pose similarity.
+        </li>
+
+        <li>
+          Lower <b>Switch threshold</b> to reduce unnecessary animation changes.
+        </li>
+      </ul>
+    </main>
+
+    <!--
+  Third-party runtime libraries:
+  Three.js r128 and its example loaders are used by this page.
+  Keep the corresponding upstream license notices when redistributing
+  third-party dependencies.
+-->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/BVHLoader.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+
+    <script>
+      "use strict";
+
+      /* ================================================================
+   DOM
+================================================================ */
+
+      const $ = (id) => document.getElementById(id);
+
+      /* ================================================================
+   Configuration
+================================================================ */
+
+      const P = {
+        wPose: 1,
+
+        wVel: 1,
+
+        wPos: 1.5,
+
+        wDir: 1,
+
+        thr: 0.85,
+
+        half: 0.15,
+
+        interval: 0.1,
+
+        inert: true,
+
+        zoom: 6,
+      };
+
+      /* ================================================================
+   Motion database
+================================================================ */
+
+      const S = {
+        nb: 0,
+
+        N: 0,
+
+        scale: 1,
+
+        fps: 30,
+
+        names: [],
+
+        names2: [],
+
+        parent: [],
+
+        root: 0,
+
+        ids: null,
+      };
+
+      /* ================================================================
+   Runtime state
+================================================================ */
+
+      const R = {};
+
+      const keys = new Set();
+
+      /* ================================================================
+   Model state
+================================================================ */
+
+      let MD = {
+        root: null,
+
+        obj: null,
+
+        rest: null,
+
+        rpos: null,
+
+        m: null,
+
+        qd: [],
+
+        qo: [],
+
+        qt: 0,
+
+        minY: 0,
+
+        hh: 0,
+
+        hd: 0,
+      };
+
+      /* ================================================================
+   Controls
+================================================================ */
+
+      const cfg = [
+        ["wPose", "Pose match", 0, 3, 0.05],
+
+        ["wVel", "Velocity match", 0, 3, 0.05],
+
+        ["wPos", "Trajectory position", 0, 5, 0.05],
+
+        ["wDir", "Trajectory facing", 0, 5, 0.05],
+
+        ["thr", "Switch threshold (lower = fewer switches)", 0.3, 1, 0.01],
+
+        ["half", "Inertialization half-life (s)", 0.02, 0.5, 0.01],
+
+        ["interval", "Search interval (s)", 0.02, 0.5, 0.01],
+
+        ["zoom", "Camera distance", 2, 14, 0.1],
+      ];
+
+      for (const [key, label, min, max, step] of cfg) {
+        const wrapper = document.createElement("label");
+
+        wrapper.className = "sl";
+
+        wrapper.innerHTML = `
+    <span>
+      ${label}:
+      <b id="v_${key}">${P[key]}</b>
+    </span>
+
+    <input
+      type="range"
+      min="${min}"
+      max="${max}"
+      step="${step}"
+      value="${P[key]}"
+    >
+  `;
+
+        wrapper.querySelector("input").oninput = (event) => {
+          P[key] = Number(event.target.value);
+
+          $("v_" + key).textContent = P[key];
+        };
+
+        $("ctl").append(wrapper);
+      }
+
+      $("inert").onchange = (event) => {
+        P.inert = event.target.checked;
+
+        if (!P.inert) {
+          R.off?.fill(0);
+
+          R.vel?.fill(0);
+        }
+      };
+
+      /* ================================================================
+   Keyboard
+================================================================ */
+
+      addEventListener("keydown", (event) => {
+        if (
+          event.target &&
+          event.target.tagName === "INPUT" &&
+          event.target.type !== "checkbox"
+        ) {
+          return;
+        }
+
+        keys.add(event.code);
+
+        if (event.code.startsWith("Arrow")) {
+          event.preventDefault();
+        }
+      });
+
+      addEventListener("keyup", (event) => {
+        keys.delete(event.code);
+      });
+
+      addEventListener("blur", () => {
+        keys.clear();
+
+        padEnd();
+
+        runOn(false);
+      });
+
+      /* ================================================================
+   Touch controls
+================================================================ */
+
+      const stick = {
+        x: 0,
+
+        z: 0,
+      };
+
+      let runHeld = false;
+
+      const pad = $("pad");
+
+      const nub = $("nub");
+
+      const runb = $("runb");
+
+      function padMove(event) {
+        const rect = pad.getBoundingClientRect();
+
+        const radius = rect.width / 2;
+
+        let dx = event.clientX - (rect.left + radius);
+
+        let dy = event.clientY - (rect.top + radius);
+
+        const length = Math.hypot(dx, dy);
+
+        if (length > radius) {
+          dx *= radius / length;
+
+          dy *= radius / length;
+        }
+
+        nub.style.transform = `translate(${dx}px,${dy}px)`;
+
+        const amount = Math.hypot(dx, dy) / radius;
+
+        if (amount > 0.2) {
+          stick.x = dx / radius;
+
+          stick.z = dy / radius;
+        } else {
+          stick.x = 0;
+
+          stick.z = 0;
+        }
+      }
+
+      function padEnd() {
+        stick.x = 0;
+
+        stick.z = 0;
+
+        nub.style.transform = "";
+      }
+
+      pad.addEventListener("pointerdown", (event) => {
+        pad.setPointerCapture(event.pointerId);
+
+        padMove(event);
+      });
+
+      pad.addEventListener("pointermove", (event) => {
+        if (pad.hasPointerCapture(event.pointerId)) {
+          padMove(event);
+        }
+      });
+
+      pad.addEventListener("pointerup", padEnd);
+
+      pad.addEventListener("pointercancel", padEnd);
+
+      function runOn(value) {
+        runHeld = value;
+
+        runb.classList.toggle("on", value);
+      }
+
+      runb.addEventListener("pointerdown", (event) => {
+        runb.setPointerCapture(event.pointerId);
+
+        runOn(true);
+      });
+
+      runb.addEventListener("pointerup", () => {
+        runOn(false);
+      });
+
+      runb.addEventListener("pointercancel", () => {
+        runOn(false);
+      });
+
+      addEventListener(
+        "touchstart",
+        () => {
+          document.documentElement.classList.add("touch");
+        },
+        {
+          once: true,
+          passive: true,
+        },
+      );
+
+      function run() {
+        return (
+          keys.has("ShiftLeft") ||
+          keys.has("ShiftRight") ||
+          runHeld ||
+          Math.hypot(stick.x, stick.z) > 0.9
+        );
+      }
+
+      function input() {
+        const x =
+          (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) -
+          (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) +
+          stick.x;
+
+        const z =
+          (keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0) -
+          (keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) +
+          stick.z;
+
+        const length = Math.hypot(x, z);
+
+        if (length > 0.01) {
+          return {
+            m: 1,
+
+            d: [x / length, z / length],
+          };
+        }
+
+        return {
+          m: 0,
+
+          d: [0, 0],
+        };
+      }
+
+      /* ================================================================
+   Three.js scene
+================================================================ */
+
+      const view = $("view");
+
+      const renderer = new THREE.WebGLRenderer({
+        canvas: $("c"),
+
+        antialias: true,
+
+        alpha: true,
+      });
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+      const scene = new THREE.Scene();
+
+      const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+
+      const grid = new THREE.GridHelper(60, 60, 0x888888, 0x888888);
+
+      grid.material.transparent = true;
+
+      grid.material.opacity = 0.35;
+
+      scene.add(grid);
+
+      const lines = new THREE.LineSegments(
+        new THREE.BufferGeometry(),
+
+        new THREE.LineBasicMaterial({
+          color: 0x4f8cff,
+        }),
+      );
+
+      const joints = new THREE.Points(
+        new THREE.BufferGeometry(),
+
+        new THREE.PointsMaterial({
+          color: 0x4f8cff,
+
+          size: 5,
+
+          sizeAttenuation: false,
+        }),
+      );
+
+      lines.frustumCulled = false;
+
+      joints.frustumCulled = false;
+
+      scene.add(lines, joints);
+
+      function dots(color) {
+        const points = new THREE.Points(
+          new THREE.BufferGeometry(),
+
+          new THREE.PointsMaterial({
+            color,
+
+            size: 11,
+
+            sizeAttenuation: false,
+          }),
+        );
+
+        points.geometry.setAttribute(
+          "position",
+
+          new THREE.BufferAttribute(new Float32Array(9), 3),
+        );
+
+        points.frustumCulled = false;
+
+        scene.add(points);
+
+        return points;
+      }
+
+      const want = dots(0xff4d4d);
+
+      const got = dots(0x35c46a);
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 1));
+
+      const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+
+      sun.position.set(2, 4, 3);
+
+      scene.add(sun);
+
+      function resize() {
+        const width = Math.max(view.clientWidth, 1);
+
+        const height = Math.max(view.clientHeight, 1);
+
+        renderer.setSize(width, height, false);
+
+        cam.aspect = width / height;
+
+        cam.updateProjectionMatrix();
+      }
+
+      addEventListener("resize", resize);
+
+      resize();
+
+      /* ================================================================
+   Generic helpers
+================================================================ */
+
+      function safeFps(times, fallback = 30) {
+        if (!times || times.length < 2) {
+          return fallback;
+        }
+
+        const duration = times[times.length - 1] - times[0];
+
+        if (!Number.isFinite(duration) || duration <= 0) {
+          return fallback;
+        }
+
+        const fps = (times.length - 1) / duration;
+
+        return Number.isFinite(fps) && fps > 0 ? fps : fallback;
+      }
+
+      /* ================================================================
+   Bone naming
+================================================================ */
+
+      /*
+       * Keep the original name available for side detection.
+       * The previous version incorrectly treated any "l" or "r"
+       * contained anywhere in a name as a side marker.
+       */
+
+      function cleanBoneName(name) {
+        return String(name || "")
+          .toLowerCase()
+          .replace(/mixamorig[:._-]?/g, "")
+          .replace(/armature[:._-]?/g, "")
+          .replace(/skeleton[:._-]?/g, "")
+          .replace(/bip001[:._-]?/g, "")
+          .replace(/bip01[:._-]?/g, "")
+          .replace(/model[:._-]?/g, "")
+          .replace(/[^a-z0-9]+/g, "");
+      }
+
+      function boneSide(name) {
+        const raw = String(name || "")
+          .toLowerCase()
+          .replace(/mixamorig[:._-]?/g, "")
+          .replace(/armature[:._-]?/g, "")
+          .replace(/skeleton[:._-]?/g, "")
+          .replace(/bip001[:._-]?/g, "")
+          .replace(/bip01[:._-]?/g, "")
+          .replace(/model[:._-]?/g, "")
+          .trim();
+
+        if (
+          /^left(?:[^a-z]|$)/.test(raw) ||
+          /^left/.test(raw) ||
+          /(?:^|[^a-z])left(?:[^a-z]|$)/.test(raw) ||
+          /^l(?:[_\-. :])/.test(raw)
+        ) {
+          return "left";
+        }
+
+        if (
+          /^right(?:[^a-z]|$)/.test(raw) ||
+          /^right/.test(raw) ||
+          /(?:^|[^a-z])right(?:[^a-z]|$)/.test(raw) ||
+          /^r(?:[_\-. :])/.test(raw)
+        ) {
+          return "right";
+        }
+
+        const compact = raw.replace(/[^a-z0-9]/g, "");
+
+        if (
+          /^(?:l)(?:foot|ankle|toe|toebase|thigh|upleg|upperleg|leg)/.test(
+            compact,
+          )
+        ) {
+          return "left";
+        }
+
+        if (
+          /^(?:r)(?:foot|ankle|toe|toebase|thigh|upleg|upperleg|leg)/.test(
+            compact,
+          )
+        ) {
+          return "right";
+        }
+
+        return "";
+      }
+
+      function bonePart(name) {
+        const n = cleanBoneName(name);
+
+        if (
+          n.includes("foot") ||
+          n.includes("ankle") ||
+          n.includes("toebase") ||
+          n.includes("toe")
+        ) {
+          return "foot";
+        }
+
+        if (
+          n.includes("upleg") ||
+          n.includes("upperleg") ||
+          n.includes("thigh")
+        ) {
+          return "upperleg";
+        }
+
+        if (n.includes("lowerleg") || n.includes("calf")) {
+          return "lowerleg";
+        }
+
+        if (n === "hips" || n === "hip" || n.includes("pelvis")) {
+          return "hips";
+        }
+
+        if (n.includes("head")) {
+          return "head";
+        }
+
+        if (n.includes("spine") || n.includes("chest")) {
+          return "spine";
+        }
+
+        return "";
+      }
+
+      function boneScore(name, wantedSide, wantedPart) {
+        const side = boneSide(name);
+
+        const part = bonePart(name);
+
+        if (side !== wantedSide || part !== wantedPart) {
+          return -Infinity;
+        }
+
+        const n = cleanBoneName(name);
+
+        let score = 0;
+
+        if (wantedPart === "foot") {
+          if (n.includes("foot")) score += 100;
+
+          if (n.includes("ankle")) score += 80;
+
+          if (n.includes("toebase")) score += 70;
+
+          if (n.includes("toe")) score += 50;
+        }
+
+        if (wantedPart === "upperleg") {
+          if (n.includes("upleg")) score += 100;
+
+          if (n.includes("upperleg")) score += 100;
+
+          if (n.includes("thigh")) score += 90;
+        }
+
+        if (n.startsWith(wantedSide)) {
+          score += 20;
+        }
+
+        return score;
+      }
+
+      function findBone(wantedSide, wantedPart) {
+        let best = -1;
+
+        let bestScore = -Infinity;
+
+        for (let i = 0; i < S.names.length; i++) {
+          const score = boneScore(S.names[i], wantedSide, wantedPart);
+
+          if (score > bestScore) {
+            bestScore = score;
+
+            best = i;
+          }
+        }
+
+        return best;
+      }
+
+      /*
+       * Debug information is only printed to the console when the
+       * detector cannot identify the required joints.
+       */
+
+      function findLocomotionBones() {
+        const result = {
+          lf: findBone("left", "foot"),
+
+          rf: findBone("right", "foot"),
+
+          ll: findBone("left", "upperleg"),
+
+          rl: findBone("right", "upperleg"),
+        };
+
+        if (Object.values(result).some((index) => index < 0)) {
+          console.warn(
+            "Motion matching could not identify all locomotion joints.",
+            {
+              bones: S.names,
+              detected: result,
+            },
+          );
+        }
+
+        return result;
+      }
+
+      /* ================================================================
+   Skeleton root
+================================================================ */
+
+      function findRootBone(bones) {
+        const candidates = [];
+
+        for (let i = 0; i < bones.length; i++) {
+          const name = cleanBoneName(bones[i].name);
+
+          let score = 0;
+
+          if (name === "hips" || name === "hip") {
+            score += 100;
+          }
+
+          if (name.includes("pelvis")) {
+            score += 90;
+          }
+
+          if (name === "root") {
+            score += 80;
+          }
+
+          if (!bones[i].parent || !bones.includes(bones[i].parent)) {
+            score += 30;
+          }
+
+          candidates.push({
+            index: i,
+            score,
+          });
+        }
+
+        candidates.sort((a, b) => b.score - a.score);
+
+        return candidates[0]?.index ?? 0;
+      }
+
+      /* ================================================================
+   BVH sampling
+================================================================ */
+
+      function sampleClip(result, scale) {
+        if (
+          !result ||
+          !result.skeleton ||
+          !result.skeleton.bones.length ||
+          !result.clip
+        ) {
+          throw new Error("Invalid animation data.");
+        }
+
+        const bones = result.skeleton.bones;
+
+        const nb = bones.length;
+
+        const root = bones[findRootBone(bones)];
+
+        const holder = new THREE.Object3D();
+
+        holder.add(root);
+
+        const byName = {};
+
+        bones.forEach((bone) => {
+          if (!(bone.name in byName)) {
+            byName[bone.name] = bone;
+          }
+        });
+
+        const tracks = result.clip.tracks
+          .map((track) => {
+            const match = /^\.bones\[(.+)\]\.(position|quaternion)$/.exec(
+              track.name,
+            );
+
+            if (!match || !byName[match[1]]) {
+              return null;
+            }
+
+            return {
+              bone: byName[match[1]],
+
+              quaternion: match[2] === "quaternion",
+
+              values: track.values,
+            };
+          })
+          .filter(Boolean);
+
+        const timeTrack = result.clip.tracks.find(
+          (track) => track.times && track.times.length > 1,
+        );
+
+        if (!timeTrack) {
+          throw new Error("Animation contains no usable frame timestamps.");
+        }
+
+        const times = timeTrack.times;
+
+        const n = times.length;
+
+        const fps = safeFps(times);
+
+        const out = new Float32Array(n * nb * 3);
+
+        const outQ = new Float32Array(n * nb * 4);
+
+        const position = new THREE.Vector3();
+
+        const quaternion = new THREE.Quaternion();
+
+        const scaleVector = new THREE.Vector3();
+
+        for (let frame = 0; frame < n; frame++) {
+          for (const track of tracks) {
+            if (track.quaternion) {
+              track.bone.quaternion.fromArray(track.values, frame * 4);
+            } else {
+              track.bone.position.fromArray(track.values, frame * 3);
+            }
+          }
+
+          holder.updateMatrixWorld(true);
+
+          for (let boneIndex = 0; boneIndex < nb; boneIndex++) {
+            bones[boneIndex].matrixWorld.decompose(
+              position,
+              quaternion,
+              scaleVector,
+            );
+
+            const p = (frame * nb + boneIndex) * 3;
+
+            out[p] = position.x * scale;
+
+            out[p + 1] = position.y * scale;
+
+            out[p + 2] = position.z * scale;
+
+            quaternion.toArray(outQ, (frame * nb + boneIndex) * 4);
+          }
+        }
+
+        return {
+          out,
+
+          outQ,
+
+          n,
+
+          fps,
+
+          bones,
+        };
+      }
+
+      /* ================================================================
+   FBX footer compatibility
+================================================================ */
+
+      function trimFbxFooter(buffer) {
+        if (buffer.byteLength < 40) {
+          return buffer;
+        }
+
+        const data = new DataView(buffer);
+
+        const version = data.getUint32(23, true);
+
+        const wide = version >= 7500;
+
+        const header = wide ? 25 : 13;
+
+        let offset = 27;
+
+        while (offset + header <= data.byteLength) {
+          const end = wide
+            ? Number(data.getBigUint64(offset, true))
+            : data.getUint32(offset, true);
+
+          if (end === 0) {
+            return buffer.slice(0, offset + header);
+          }
+
+          if (end <= offset || end > data.byteLength) {
+            break;
+          }
+
+          offset = end;
+        }
+
+        return buffer;
+      }
+
+      /* ================================================================
+   FBX parser
+================================================================ */
+
+      function parseFbx(buffer) {
+        const loader = new THREE.FBXLoader();
+
+        try {
+          return loader.parse(buffer, "");
+        } catch (firstError) {
+          try {
+            const trimmed = trimFbxFooter(buffer);
+
+            if (trimmed !== buffer) {
+              return loader.parse(trimmed, "");
+            }
+          } catch (_) {
+            /* Preserve original parser error. */
+          }
+
+          const version =
+            buffer.byteLength > 27
+              ? new DataView(buffer).getUint32(23, true)
+              : 0;
+
+          throw new Error(
+            `${firstError.message || firstError} ` +
+              `(FBX version ${version}, ` +
+              `${(buffer.byteLength / 1000000).toFixed(1)} MB)`,
+          );
+        }
+      }
+
+      /* ================================================================
+   FBX sampling
+================================================================ */
+
+      function sampleFbx(group, scale) {
+        const bones = [];
+
+        group.traverse((object) => {
+          if (object.isBone) {
+            bones.push(object);
+          }
+        });
+
+        const clip = group.animations && group.animations[0];
+
+        if (!bones.length || !clip) {
+          throw new Error(
+            "No skeleton or animation was found in this FBX file.",
+          );
+        }
+
+        const nb = bones.length;
+
+        const position = new THREE.Vector3();
+
+        const quaternion = new THREE.Quaternion();
+
+        const scaleVector = new THREE.Vector3();
+
+        function grab(positions, rotations, frame) {
+          group.updateMatrixWorld(true);
+
+          for (let i = 0; i < nb; i++) {
+            bones[i].matrixWorld.decompose(position, quaternion, scaleVector);
+
+            const p = (frame * nb + i) * 3;
+
+            positions[p] = position.x * scale;
+
+            positions[p + 1] = position.y * scale;
+
+            positions[p + 2] = position.z * scale;
+
+            quaternion.toArray(rotations, (frame * nb + i) * 4);
+          }
+        }
+
+        /*
+         * Capture the source reference pose.
+         */
+        const refP = new Float32Array(nb * 3);
+
+        const refQ = new Float32Array(nb * 4);
+
+        group.updateMatrixWorld(true);
+
+        grab(refP, refQ, 0);
+
+        const timeTrack = clip.tracks.reduce(
+          (best, track) =>
+            !best || track.times.length > best.times.length ? track : best,
+          null,
+        );
+
+        if (!timeTrack || !timeTrack.times.length) {
+          throw new Error("FBX animation has no usable timestamps.");
+        }
+
+        const times = timeTrack.times;
+
+        const n = times.length;
+
+        const fps = safeFps(times);
+
+        const out = new Float32Array(n * nb * 3);
+
+        const outQ = new Float32Array(n * nb * 4);
+
+        const mixer = new THREE.AnimationMixer(group);
+
+        const action = mixer.clipAction(clip);
+
+        action.play();
+
+        for (let frame = 0; frame < n; frame++) {
+          mixer.setTime(times[frame]);
+
+          grab(out, outQ, frame);
+        }
+
+        mixer.stopAllAction();
+
+        return {
+          out,
+
+          outQ,
+
+          n,
+
+          fps,
+
+          bones,
+
+          refP,
+
+          refQ,
+        };
+      }
+
+      /* ================================================================
+   Load animations
+================================================================ */
+
+      async function load(files) {
+        files = files.filter(Boolean);
+
+        if (!files.length) {
+          return;
+        }
+
+        if ($("loco").checked && files.length > 6) {
+          const preferred = files.filter((file) =>
+            /walk|run|jog|sprint|locomotion/i.test(file.name),
+          );
+
+          if (preferred.length) {
+            files = preferred;
+          }
+        }
+
+        const status = $("status");
+
+        status.classList.remove("status-error", "status-ok");
+
+        status.textContent = "Parsing…";
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        const chunks = [];
+
+        const qChunks = [];
+
+        const clipInfo = [];
+
+        let nb = 0;
+
+        let fps = 30;
+
+        let currentFile = "";
+
+        try {
+          for (const file of files) {
+            currentFile = file.name;
+
+            const isFbx = /\.fbx$/i.test(file.name);
+
+            let parsed;
+
+            let sampled;
+
+            if (isFbx) {
+              parsed = parseFbx(await file.arrayBuffer());
+
+              sampled = sampleFbx(parsed, 1);
+            } else {
+              parsed = new THREE.BVHLoader().parse(await file.text());
+
+              sampled = sampleClip(parsed, 1);
+            }
+
+            if (!nb) {
+              nb = sampled.bones.length;
+
+              fps = sampled.fps;
+
+              S.names = sampled.bones.map((bone) => bone.name);
+
+              S.parent = sampled.bones.map((bone) =>
+                sampled.bones.indexOf(bone.parent),
+              );
+
+              S.root = findRootBone(sampled.bones);
+
+              /*
+               * Determine source height.
+               */
+              const reference = sampled.refP || sampled.out.subarray(0, nb * 3);
+
+              let minY = Infinity;
+
+              let maxY = -Infinity;
+
+              for (let i = 0; i < nb; i++) {
+                const y = reference[i * 3 + 1];
+
+                minY = Math.min(minY, y);
+
+                maxY = Math.max(maxY, y);
+              }
+
+              const height = maxY - minY;
+
+              S.scale =
+                Number.isFinite(height) && height > 1e-5 ? 1.75 / height : 1;
+
+              /*
+               * Apply normalization to
+               * the first clip.
+               */
+              for (let i = 0; i < sampled.out.length; i++) {
+                sampled.out[i] *= S.scale;
+              }
+
+              sampled.refP = Float32Array.from(reference, (v) => v * S.scale);
+
+              /*
+               * Store reference pose.
+               */
+              S.P0 = sampled.refP;
+
+              S.Q0 = sampled.refQ || sampled.outQ.subarray(0, nb * 4);
+            } else {
+              if (sampled.bones.length !== nb) {
+                console.warn(`Skipping ${file.name}: ` + "different skeleton.");
+
+                continue;
+              }
+
+              /*
+               * Additional clips already use
+               * the normalized scale.
+               */
+              for (let i = 0; i < sampled.out.length; i++) {
+                sampled.out[i] *= S.scale;
+              }
+            }
+
+            chunks.push(sampled.out);
+
+            qChunks.push(sampled.outQ);
+
+            clipInfo.push({
+              name: file.name,
+
+              n: sampled.n,
+
+              lead: 0,
+
+              tail: Math.min(30, Math.max(2, Math.floor(sampled.n * 0.05))),
+            });
+          }
+        } catch (error) {
+          status.classList.add("status-error");
+
+          status.textContent =
+            `Could not parse "${currentFile}": ` + `${error.message || error}`;
+
+          console.error(error);
+
+          return;
+        }
+
+        if (!chunks.length) {
+          status.classList.add("status-error");
+
+          status.textContent = "No compatible animation clips were loaded.";
+
+          return;
+        }
+
+        /*
+         * Find locomotion joints.
+         */
+        S.ids = findLocomotionBones();
+
+        const ids = S.ids;
+
+        if (ids.lf < 0 || ids.rf < 0 || ids.ll < 0 || ids.rl < 0) {
+          status.classList.add("status-error");
+
+          status.textContent =
+            "Could not identify both feet and upper-leg joints.";
+
+          console.error("Available skeleton bones:", S.names);
+
+          return;
+        }
+
+        /*
+         * Find head.
+         */
+        S.ids.hd = S.names.findIndex((name) => bonePart(name) === "head");
+
+        /*
+         * Calculate reference heading.
+         */
+        S.th0 = Math.atan2(
+          -(S.P0[ids.ll * 3 + 2] - S.P0[ids.rl * 3 + 2]),
+
+          S.P0[ids.ll * 3] - S.P0[ids.rl * 3],
+        );
+
+        const totalFrames = clipInfo.reduce((sum, clip) => sum + clip.n, 0);
+
+        S.nb = nb;
+
+        S.N = totalFrames;
+
+        S.fps = fps;
+
+        S.names2 = clipInfo.map((clip) => clip.name);
+
+        S.P = new Float32Array(totalFrames * nb * 3);
+
+        S.Q = new Float32Array(totalFrames * nb * 4);
+
+        S.cs = new Int32Array(totalFrames);
+
+        S.ce = new Int32Array(totalFrames);
+
+        S.ci = new Int32Array(totalFrames);
+
+        S.ld = new Int32Array(totalFrames);
+
+        S.tl = new Int32Array(totalFrames);
+
+        let pOffset = 0;
+
+        let qOffset = 0;
+
+        let frameOffset = 0;
+
+        for (let i = 0; i < clipInfo.length; i++) {
+          const info = clipInfo[i];
+
+          S.P.set(chunks[i], pOffset);
+
+          pOffset += chunks[i].length;
+
+          S.Q.set(qChunks[i], qOffset);
+
+          qOffset += qChunks[i].length;
+
+          for (let f = 0; f < info.n; f++) {
+            const global = frameOffset + f;
+
+            S.cs[global] = frameOffset;
+
+            S.ce[global] = frameOffset + info.n - 1;
+
+            S.ci[global] = i;
+
+            S.ld[global] = Math.min(info.lead, info.n - 1);
+
+            S.tl[global] = Math.min(info.tail, Math.max(0, info.n - 1));
+          }
+
+          frameOffset += info.n;
+        }
+
+        lines.geometry.setAttribute(
+          "position",
+
+          new THREE.BufferAttribute(
+            new Float32Array(Math.max(0, (nb - 1) * 6)),
+            3,
+          ),
+        );
+
+        joints.geometry.setAttribute(
+          "position",
+
+          new THREE.BufferAttribute(new Float32Array(nb * 3), 3),
+        );
+
+        buildDB();
+
+        if (!reset()) {
+          status.classList.add("status-error");
+
+          status.textContent =
+            "The loaded clips do not contain enough usable frames.";
+
+          return;
+        }
+
+        let hipHeight = 0;
+
+        for (let f = 0; f < totalFrames; f++) {
+          hipHeight += S.P[(f * nb + S.root) * 3 + 1];
+        }
+
+        S.hipsY = hipHeight / totalFrames;
+
+        bind();
+
+        status.classList.add("status-ok");
+
+        status.textContent =
+          `${clipInfo.length} clip(s), ` +
+          `${totalFrames} frames @ ` +
+          `${fps.toFixed(0)} fps, ` +
+          `${nb} joints`;
+      }
+
+      /* ================================================================
+   Feature database
+================================================================ */
+
+      function buildDB() {
+        const { nb, N, fps } = S;
+
+        const D = 27;
+
+        const dt = 1 / Math.max(fps, 1);
+
+        const { lf, rf, ll, rl, hd } = S.ids;
+
+        const root = S.root;
+
+        const at = (frame, bone, axis) => S.P[(frame * nb + bone) * 3 + axis];
+
+        const heading = new Float32Array(N);
+
+        /*
+         * Character facing from the line
+         * between the upper legs.
+         */
+        for (let frame = 0; frame < N; frame++) {
+          const x = at(frame, ll, 0) - at(frame, rl, 0);
+
+          const z = at(frame, ll, 2) - at(frame, rl, 2);
+
+          heading[frame] = Math.atan2(-z, x);
+        }
+
+        const raw = new Float32Array(N * D);
+
+        const valid = new Uint8Array(N);
+
+        const upright = new Uint8Array(N);
+
+        const groups = new Array(D);
+
+        for (let d = 0; d < D; d++) {
+          if (d < 6) {
+            groups[d] = 0;
+          } else if (d < 15) {
+            groups[d] = 1;
+          } else if (d < 21) {
+            groups[d] = 2;
+          } else {
+            groups[d] = 3;
+          }
+        }
+
+        for (let frame = 0; frame < N; frame++) {
+          const start = S.cs[frame];
+
+          const end = S.ce[frame];
+
+          const cos = Math.cos(heading[frame]);
+
+          const sin = Math.sin(heading[frame]);
+
+          const rootX = at(frame, root, 0);
+
+          const rootZ = at(frame, root, 2);
+
+          const localize = (x, z) => [x * cos - z * sin, x * sin + z * cos];
+
+          let offset = frame * D;
+
+          /*
+           * Feet.
+           */
+          for (const bone of [lf, rf]) {
+            const local = localize(
+              at(frame, bone, 0) - rootX,
+
+              at(frame, bone, 2) - rootZ,
+            );
+
+            raw[offset++] = local[0];
+
+            raw[offset++] = at(frame, bone, 1);
+
+            raw[offset++] = local[1];
+          }
+
+          /*
+           * Velocities.
+           */
+          const previous = Math.max(start, frame - 1);
+
+          const next = Math.min(end, frame + 1);
+
+          const denominator = Math.max(next - previous, 1) * dt;
+
+          for (const bone of [lf, rf, root]) {
+            const local = localize(
+              (at(next, bone, 0) - at(previous, bone, 0)) / denominator,
+
+              (at(next, bone, 2) - at(previous, bone, 2)) / denominator,
+            );
+
+            raw[offset++] = local[0];
+
+            raw[offset++] =
+              (at(next, bone, 1) - at(previous, bone, 1)) / denominator;
+
+            raw[offset++] = local[1];
+          }
+
+          /*
+           * Future trajectory.
+           */
+          for (const futureFrames of [10, 20, 30]) {
+            const future = Math.min(end, frame + futureFrames);
+
+            const local = localize(
+              at(future, root, 0) - rootX,
+
+              at(future, root, 2) - rootZ,
+            );
+
+            raw[offset++] = local[0];
+
+            raw[offset++] = local[1];
+
+            const direction = localize(
+              Math.sin(heading[future]),
+
+              Math.cos(heading[future]),
+            );
+
+            raw[offset++] = direction[0];
+
+            raw[offset++] = direction[1];
+          }
+
+          /*
+           * Upright check.
+           */
+          if (hd >= 0) {
+            upright[frame] =
+              at(frame, hd, 1) - at(frame, root, 1) > 0.45 ? 1 : 0;
+          } else {
+            upright[frame] = 1;
+          }
+        }
+
+        /*
+         * Searchable frames.
+         */
+        for (let frame = 0; frame < N; frame++) {
+          let ok =
+            frame >= S.cs[frame] + S.ld[frame] &&
+            frame <= S.ce[frame] - S.tl[frame];
+
+          /*
+           * Do not permit a trajectory sample to
+           * cross the end of a clip.
+           */
+          if (ok) {
+            for (let k = 0; k < S.tl[frame]; k++) {
+              if (!upright[Math.min(frame + k, S.ce[frame])]) {
+                ok = false;
+
+                break;
+              }
+            }
+          }
+
+          valid[frame] = ok ? 1 : 0;
+        }
+
+        /*
+         * Mean.
+         */
+        const mean = new Float32Array(D);
+
+        let validCount = 0;
+
+        for (let frame = 0; frame < N; frame++) {
+          if (!valid[frame]) {
+            continue;
+          }
+
+          validCount++;
+
+          for (let d = 0; d < D; d++) {
+            mean[d] += raw[frame * D + d];
+          }
+        }
+
+        if (validCount) {
+          for (let d = 0; d < D; d++) {
+            mean[d] /= validCount;
+          }
+        }
+
+        /*
+         * Group standard deviation.
+         */
+        const deviation = new Float32Array(4);
+
+        const counts = new Int32Array(4);
+
+        for (let frame = 0; frame < N; frame++) {
+          if (!valid[frame]) {
+            continue;
+          }
+
+          for (let d = 0; d < D; d++) {
+            const group = groups[d];
+
+            const delta = raw[frame * D + d] - mean[d];
+
+            deviation[group] += delta * delta;
+
+            counts[group]++;
+          }
+        }
+
+        for (let group = 0; group < 4; group++) {
+          deviation[group] =
+            Math.sqrt(deviation[group] / Math.max(counts[group], 1)) + 1e-6;
+        }
+
+        /*
+         * Normalize.
+         */
+        const features = new Float32Array(N * D);
+
+        for (let frame = 0; frame < N; frame++) {
+          for (let d = 0; d < D; d++) {
+            const group = groups[d];
+
+            features[frame * D + d] =
+              (raw[frame * D + d] - mean[d]) / deviation[group];
+          }
+        }
+
+        Object.assign(S, {
+          th: heading,
+
+          F: features,
+
+          g: groups,
+
+          mean,
+
+          sd: deviation,
+
+          valid,
+
+          D,
+        });
+      }
+
+      /* ================================================================
+   Reset
+================================================================ */
+
+      function reset() {
+        if (!S.N) {
+          return false;
+        }
+
+        let frame = -1;
+
+        for (let i = 0; i < S.N; i++) {
+          if (S.valid[i]) {
+            frame = i;
+
+            break;
+          }
+        }
+
+        if (frame < 0) {
+          return false;
+        }
+
+        const n3 = S.nb * 3;
+
+        Object.assign(R, {
+          cf: frame,
+
+          ph: 0,
+
+          t: 0,
+
+          sw: 0,
+
+          swT: 0,
+
+          rate: 0,
+
+          dt: 1 / 60,
+
+          hudT: 0,
+
+          disp: new Float32Array(n3),
+
+          prev: new Float32Array(n3),
+
+          off: new Float32Array(n3),
+
+          vel: new Float32Array(n3),
+
+          cam: {
+            x: 0,
+            z: 0,
+          },
+
+          yaw: Math.PI - S.th[frame],
+
+          tx: 0,
+
+          tz: 0,
+        });
+
+        const cos = Math.cos(R.yaw);
+
+        const sin = Math.sin(R.yaw);
+
+        const rootX = S.P[(frame * S.nb + S.root) * 3];
+
+        const rootZ = S.P[(frame * S.nb + S.root) * 3 + 2];
+
+        R.tx = -(rootX * cos + rootZ * sin);
+
+        R.tz = -(-rootX * sin + rootZ * cos);
+
+        pose(1 / 60);
+
+        R.prev.set(R.disp);
+
+        return true;
+      }
+
+      /* ================================================================
+   Pose
+================================================================ */
+
+      function pose(dt) {
+        if (!S.N || !R.disp) {
+          return;
+        }
+
+        const nb = S.nb;
+
+        const n3 = nb * 3;
+
+        R.prev.set(R.disp);
+
+        const positions = S.P;
+
+        const cos = Math.cos(R.yaw);
+
+        const sin = Math.sin(R.yaw);
+
+        const frame0 = R.cf * n3;
+
+        const frame1 = Math.min(R.cf + 1, S.ce[R.cf]) * n3;
+
+        const alpha = Math.max(0, Math.min(1, R.ph));
+
+        R.dt = Math.max(dt, 1 / 1000);
+
+        if (!P.inert) {
+          R.off.fill(0);
+
+          R.vel.fill(0);
+        }
+
+        const decayRate = (2 * Math.LN2) / Math.max(P.half, 0.001);
+
+        const decay = Math.exp(-decayRate * dt);
+
+        for (let bone = 0; bone < nb; bone++) {
+          const o = bone * 3;
+
+          const x =
+            positions[frame0 + o] +
+            (positions[frame1 + o] - positions[frame0 + o]) * alpha;
+
+          const y =
+            positions[frame0 + o + 1] +
+            (positions[frame1 + o + 1] - positions[frame0 + o + 1]) * alpha;
+
+          const z =
+            positions[frame0 + o + 2] +
+            (positions[frame1 + o + 2] - positions[frame0 + o + 2]) * alpha;
+
+          if (P.inert) {
+            R.off[o] = decay * (R.off[o] + R.vel[o] * dt);
+
+            R.off[o + 1] = decay * (R.off[o + 1] + R.vel[o + 1] * dt);
+
+            R.off[o + 2] = decay * (R.off[o + 2] + R.vel[o + 2] * dt);
+
+            R.vel[o] *= decay;
+
+            R.vel[o + 1] *= decay;
+
+            R.vel[o + 2] *= decay;
+          }
+
+          R.disp[o] = x * cos + z * sin + R.tx + R.off[o];
+
+          R.disp[o + 1] = y + R.off[o + 1];
+
+          R.disp[o + 2] = -x * sin + z * cos + R.tz + R.off[o + 2];
+        }
+      }
+
+      /* ================================================================
+   Search
+================================================================ */
+
+      function search() {
+        if (!S.N || !S.F || !S.valid) {
+          return;
+        }
+
+        const { D, F, g, mean, sd, valid, N } = S;
+
+        const current = R.cf;
+
+        const movement = input();
+
+        const speed = run() ? 3.4 : 1.4;
+
+        const heading = S.th[current] + R.yaw;
+
+        const cos = Math.cos(heading);
+
+        const sin = Math.sin(heading);
+
+        const localize = (x, z) => [x * cos - z * sin, x * sin + z * cos];
+
+        const query = new Float32Array(D);
+
+        /*
+         * Current pose and velocity.
+         */
+        query.set(F.subarray(current * D, current * D + D));
+
+        const currentDirection = [Math.sin(heading), Math.cos(heading)];
+
+        const targetDirection = movement.m ? movement.d : currentDirection;
+
+        /*
+         * Future trajectory.
+         */
+        for (let step = 1; step <= 3; step++) {
+          const time = (step * 10) / Math.max(S.fps, 1);
+
+          const desired = localize(
+            movement.d[0] * speed * time,
+
+            movement.d[1] * speed * time,
+          );
+
+          const directionX =
+            currentDirection[0] +
+            (targetDirection[0] - currentDirection[0]) * (step / 3);
+
+          const directionZ =
+            currentDirection[1] +
+            (targetDirection[1] - currentDirection[1]) * (step / 3);
+
+          const length = Math.hypot(directionX, directionZ) || 1;
+
+          const direction = localize(
+            directionX / length,
+
+            directionZ / length,
+          );
+
+          const offset = 15 + (step - 1) * 4;
+
+          query[offset] = (desired[0] - mean[offset]) / sd[2];
+
+          query[offset + 1] = (desired[1] - mean[offset + 1]) / sd[2];
+
+          query[offset + 2] = (direction[0] - mean[offset + 2]) / sd[3];
+
+          query[offset + 3] = (direction[1] - mean[offset + 3]) / sd[3];
+        }
+
+        const weights = [P.wPose, P.wVel, P.wPos, P.wDir];
+
+        let best = -1;
+
+        let bestCost = Infinity;
+
+        let currentCost = Infinity;
+
+        for (let frame = 0; frame < N; frame++) {
+          if (!valid[frame]) {
+            continue;
+          }
+
+          /*
+           * Don't compare against a frame from
+           * a completely incompatible clip segment.
+           */
+          let cost = 0;
+
+          const offset = frame * D;
+
+          for (let d = 0; d < D; d++) {
+            const delta = query[d] - F[offset + d];
+
+            cost += weights[g[d]] * delta * delta;
+          }
+
+          if (cost < bestCost) {
+            bestCost = cost;
+
+            best = frame;
+          }
+
+          if (frame === current) {
+            currentCost = cost;
+          }
+        }
+
+        if (
+          best >= 0 &&
+          best !== current &&
+          (currentCost === Infinity || bestCost < currentCost * P.thr)
+        ) {
+          transition(best);
+        }
+      }
+
+      /* ================================================================
+   Transition
+================================================================ */
+
+      function transition(nextFrame) {
+        if (nextFrame < 0 || nextFrame >= S.N || !S.valid[nextFrame]) {
+          return;
+        }
+
+        const nb = S.nb;
+
+        const n3 = nb * 3;
+
+        const positions = S.P;
+
+        const oldHeading = S.th[R.cf] + R.yaw;
+
+        R.yaw = oldHeading - S.th[nextFrame];
+
+        const cos = Math.cos(R.yaw);
+
+        const sin = Math.sin(R.yaw);
+
+        const rootX = positions[nextFrame * n3 + S.root * 3];
+
+        const rootZ = positions[nextFrame * n3 + S.root * 3 + 2];
+
+        R.tx = R.disp[S.root * 3] - (rootX * cos + rootZ * sin);
+
+        R.tz = R.disp[S.root * 3 + 2] - (-rootX * sin + rootZ * cos);
+
+        R.cf = nextFrame;
+
+        R.ph = 0;
+
+        R.sw++;
+
+        R.qt = 0;
+
+        /*
+         * Position inertialization.
+         */
+        for (let bone = 0; bone < nb; bone++) {
+          const o = bone * 3;
+
+          const ax = positions[nextFrame * n3 + o];
+
+          const ay = positions[nextFrame * n3 + o + 1];
+
+          const az = positions[nextFrame * n3 + o + 2];
+
+          const worldX = ax * cos + az * sin + R.tx;
+
+          const worldZ = -ax * sin + az * cos + R.tz;
+
+          if (P.inert) {
+            R.off[o] = R.disp[o] - worldX;
+
+            R.off[o + 1] = R.disp[o + 1] - ay;
+
+            R.off[o + 2] = R.disp[o + 2] - worldZ;
+          } else {
+            R.off[o] = 0;
+
+            R.off[o + 1] = 0;
+
+            R.off[o + 2] = 0;
+          }
+        }
+
+        if (MD.m && MD.m.length) {
+          for (let i = 0; i < MD.m.length; i++) {
+            const modelBone = MD.m[i];
+
+            wq(modelBone, nextFrame, 0, R.yaw, _q);
+
+            if (P.inert) {
+              R.qo[i].copy(_q.clone().invert()).premultiply(R.qd[i]);
+            } else {
+              R.qo[i].identity();
+            }
+          }
+        }
+      }
+
+      /* ================================================================
+   Quaternion helpers
+================================================================ */
+
+      const _q = new THREE.Quaternion();
+
+      const _a = new THREE.Quaternion();
+
+      const _b = new THREE.Quaternion();
+
+      const _y = new THREE.Quaternion();
+
+      const _t = new THREE.Quaternion();
+
+      const _p = new THREE.Quaternion();
+
+      const _I = new THREE.Quaternion();
+
+      const _v = new THREE.Vector3();
+
+      const UP = new THREE.Vector3(0, 1, 0);
+
+      function wq(modelBone, frame, fraction, yaw, output) {
+        const nb = S.nb;
+
+        const next = Math.min(frame + 1, S.ce[frame]);
+
+        _a.fromArray(S.Q, (frame * nb + modelBone.b) * 4);
+
+        _b.fromArray(S.Q, (next * nb + modelBone.b) * 4);
+
+        output
+          .copy(_a)
+          .slerp(_b, fraction)
+          .multiply(modelBone.ref)
+          .premultiply(_y.setFromAxisAngle(UP, yaw));
+      }
+
+      /* ================================================================
+   Add model
+================================================================ */
+
+      function addModel(object) {
+        if (MD.root) {
+          scene.remove(MD.root);
+        }
+
+        const group = new THREE.Group();
+
+        group.add(object);
+
+        group.visible = false;
+
+        scene.add(group);
+
+        group.updateMatrixWorld(true);
+
+        const rest = new Map();
+
+        const restPosition = new Map();
+
+        let hips = null;
+
+        let head = null;
+
+        let boneCount = 0;
+
+        object.traverse((child) => {
+          child.frustumCulled = false;
+
+          if (!child.isBone) {
+            return;
+          }
+
+          boneCount++;
+
+          const name = cleanBoneName(child.name);
+
+          rest.set(child, child.getWorldQuaternion(new THREE.Quaternion()));
+
+          restPosition.set(child, child.getWorldPosition(new THREE.Vector3()));
+
+          if (
+            !hips &&
+            (name === "hips" ||
+              name === "hip" ||
+              name.includes("pelvis") ||
+              name === "root")
+          ) {
+            hips = child;
+          }
+
+          if (!head && name.includes("head")) {
+            head = child;
+          }
+        });
+
+        if (!hips) {
+          $("mstatus").textContent = boneCount
+            ? "No hips/root body joint found."
+            : "This file has no skeleton. Use a rigged/skinned model.";
+
+          scene.remove(group);
+
+          return;
+        }
+
+        const box = new THREE.Box3().setFromObject(object);
+
+        const hipsPosition = hips.getWorldPosition(new THREE.Vector3());
+
+        const modelHipHeight = Math.max(hipsPosition.y - box.min.y, 0.001);
+
+        const modelHeadDistance = head
+          ? head.getWorldPosition(new THREE.Vector3()).distanceTo(hipsPosition)
+          : 0;
+
+        MD = {
+          root: group,
+
+          obj: object,
+
+          rest,
+
+          rpos: restPosition,
+
+          minY: box.min.y,
+
+          hh: modelHipHeight,
+
+          hd: modelHeadDistance,
+
+          m: null,
+
+          qd: [],
+
+          qo: [],
+
+          qt: 0,
+        };
+
+        bind();
+      }
+
+      /* ================================================================
+   Bind model
+================================================================ */
+
+      function bind() {
+        if (!MD.root || !S.N || !R.disp) {
+          return;
+        }
+
+        const sourceByName = new Map();
+
+        for (let i = 0; i < S.names.length; i++) {
+          const key = cleanBoneName(S.names[i]);
+
+          if (!sourceByName.has(key)) {
+            sourceByName.set(key, i);
+          }
+        }
+
+        /*
+         * Scale model according to source hip height.
+         */
+        let scale = S.hipsY / Math.max(MD.hh, 0.001);
+
+        if (!Number.isFinite(scale) || scale <= 0) {
+          scale = 1;
+        }
+
+        MD.root.scale.setScalar(scale);
+
+        MD.root.updateMatrixWorld(true);
+
+        const mapped = [];
+
+        const used = new Set();
+
+        function findSource(modelName) {
+          const exact = cleanBoneName(modelName);
+
+          if (sourceByName.has(exact)) {
+            return sourceByName.get(exact);
+          }
+
+          /*
+           * Controlled aliases for common naming
+           * differences.
+           */
+          const modelSide = boneSide(modelName);
+
+          const modelPart = bonePart(modelName);
+
+          if (modelSide && modelPart) {
+            let best = -1;
+
+            let bestScore = -Infinity;
+
+            for (const [sourceName, sourceIndex] of sourceByName) {
+              const score = boneScore(sourceName, modelSide, modelPart);
+
+              if (score > bestScore) {
+                bestScore = score;
+
+                best = sourceIndex;
+              }
+            }
+
+            if (best >= 0) {
+              return best;
+            }
+          }
+
+          return -1;
+        }
+
+        MD.obj.traverse((bone) => {
+          if (!bone.isBone) {
+            return;
+          }
+
+          const source = findSource(bone.name);
+
+          if (source < 0 || used.has(source)) {
+            return;
+          }
+
+          used.add(source);
+
+          mapped.push({
+            b: source,
+
+            bone,
+
+            hips: source === S.root,
+
+            rest: MD.rest.get(bone).clone(),
+
+            ref: new THREE.Quaternion().fromArray(S.Q0, source * 4).invert(),
+          });
+        });
+
+        /*
+         * Ensure the model root is mapped.
+         */
+        if (!mapped.some((entry) => entry.hips)) {
+          const modelRoot = mapped.find((entry) => {
+            const n = cleanBoneName(entry.bone.name);
+
+            return (
+              n === "hips" ||
+              n === "hip" ||
+              n.includes("pelvis") ||
+              n === "root"
+            );
+          });
+
+          if (modelRoot) {
+            modelRoot.hips = true;
+          }
+        }
+
+        if (!mapped.some((entry) => entry.hips)) {
+          $("mstatus").textContent =
+            "Model skeleton could not be mapped to the source root joint.";
+
+          return;
+        }
+
+        /*
+         * Rest-pose correction.
+         */
+        const referenceYaw = new THREE.Quaternion().setFromAxisAngle(UP, S.th0);
+
+        const mappedSet = new Set(mapped.map((entry) => entry.bone));
+
+        for (const entry of mapped) {
+          let parent = entry.bone.parent;
+
+          while (parent && !mappedSet.has(parent)) {
+            parent = parent.parent;
+          }
+
+          entry.parent = parent || null;
+        }
+
+        MD.m = mapped;
+
+        R.qd = mapped.map(() => new THREE.Quaternion());
+
+        R.qo = mapped.map(() => new THREE.Quaternion());
+
+        R.qt = 1;
+
+        $("mstatus").textContent =
+          `Model: ${mapped.length} joints mapped, ` +
+          `scale ×${scale.toPrecision(3)}`;
+
+        updateModel(0);
+      }
+
+      /* ================================================================
+   Update model
+================================================================ */
+
+      function updateModel(dt) {
+        if (!MD.m || !MD.m.length) {
+          return;
+        }
+
+        const decayRate = (2 * Math.LN2) / Math.max(P.half, 0.001);
+
+        R.qt += dt;
+
+        const factor = P.inert
+          ? (1 + decayRate * R.qt) * Math.exp(-decayRate * R.qt)
+          : 0;
+
+        for (let i = 0; i < MD.m.length; i++) {
+          const entry = MD.m[i];
+
+          wq(entry, R.cf, R.ph, R.yaw, _q);
+
+          if (P.inert) {
+            _t.copy(_q).premultiply(_I.identity().slerp(R.qo[i], factor));
+          } else {
+            _t.copy(_q);
+          }
+
+          R.qd[i].copy(_t);
+
+          const parent = entry.parent;
+
+          if (entry.hips) {
+            _v.set(
+              R.disp[entry.b * 3],
+
+              R.disp[entry.b * 3 + 1],
+
+              R.disp[entry.b * 3 + 2],
+            );
+
+            if (parent) {
+              parent.updateWorldMatrix(true, false);
+
+              entry.bone.position.copy(parent.worldToLocal(_v));
+            } else {
+              entry.bone.position.copy(_v);
+            }
+          }
+
+          if (parent) {
+            parent.getWorldQuaternion(_p);
+
+            entry.bone.quaternion.copy(_p.invert().multiply(_t));
+          } else {
+            entry.bone.quaternion.copy(_t);
+          }
+        }
+      }
+
+      /* ================================================================
+   Model file
+================================================================ */
+
+      $("mfile").onchange = async (event) => {
+        const file = event.target.files[0];
+
+        if (!file) {
+          return;
+        }
+
+        const status = $("mstatus");
+
+        status.classList.remove("status-error", "status-ok");
+
+        status.textContent = "Loading model…";
+
+        try {
+          const buffer = await file.arrayBuffer();
+
+          if (/\.fbx$/i.test(file.name)) {
+            const object = parseFbx(buffer);
+
+            addModel(object);
+
+            status.classList.add("status-ok");
+          } else {
+            new THREE.GLTFLoader().parse(
+              buffer,
+
+              "",
+
+              (gltf) => {
+                try {
+                  addModel(gltf.scene);
+
+                  status.classList.add("status-ok");
+                } catch (error) {
+                  status.classList.add("status-error");
+
+                  status.textContent =
+                    "Could not prepare model: " + (error.message || error);
+                }
+              },
+
+              (error) => {
+                status.classList.add("status-error");
+
+                status.textContent =
+                  "Could not read model: " + (error.message || error);
+              },
+            );
+          }
+        } catch (error) {
+          status.classList.add("status-error");
+
+          status.textContent =
+            "Could not read model: " + (error.message || error);
+        }
+      };
+
+      /* ================================================================
+   Animation advancement
+================================================================ */
+
+      function advanceAnimation(dt) {
+        if (!S.N || !R.disp) {
+          return;
+        }
+
+        R.ph += dt * S.fps;
+
+        while (R.ph >= 1) {
+          R.ph -= 1;
+
+          const end = S.ce[R.cf];
+
+          if (R.cf < end) {
+            R.cf++;
+
+            continue;
+          }
+
+          /*
+           * We reached the end of this clip.
+           * Loop to its first valid frame instead of
+           * falling into another clip or invalid frames.
+           */
+          const clip = S.ci[R.cf];
+
+          let first = S.cs[R.cf] + S.ld[R.cf];
+
+          const last = S.ce[R.cf] - S.tl[R.cf];
+
+          if (first > last) {
+            first = S.cs[R.cf];
+          }
+
+          let target = -1;
+
+          for (let f = first; f <= last; f++) {
+            if (S.ci[f] === clip && S.valid[f]) {
+              target = f;
+
+              break;
+            }
+          }
+
+          if (target >= 0) {
+            /*
+             * Preserve world position while restarting
+             * the same animation clip.
+             */
+            transition(target);
+          } else {
+            /*
+             * Fallback: find any valid frame.
+             */
+            for (let f = 0; f < S.N; f++) {
+              if (S.valid[f]) {
+                transition(f);
+
+                break;
+              }
+            }
+          }
+        }
+
+        if (!S.valid[R.cf]) {
+          search();
+        }
+      }
+
+      /* ================================================================
+   Debug drawing
+================================================================ */
+
+      function updateDebugGeometry() {
+        if (!S.N || !R.disp) {
+          return;
+        }
+
+        const positions = lines.geometry.attributes.position.array;
+
+        let offset = 0;
+
+        for (let bone = 0; bone < S.nb; bone++) {
+          const parent = S.parent[bone];
+
+          if (parent < 0 || parent === bone) {
+            continue;
+          }
+
+          positions[offset++] = R.disp[parent * 3];
+
+          positions[offset++] = R.disp[parent * 3 + 1];
+
+          positions[offset++] = R.disp[parent * 3 + 2];
+
+          positions[offset++] = R.disp[bone * 3];
+
+          positions[offset++] = R.disp[bone * 3 + 1];
+
+          positions[offset++] = R.disp[bone * 3 + 2];
+        }
+
+        lines.geometry.attributes.position.needsUpdate = true;
+
+        joints.geometry.attributes.position.array.set(R.disp);
+
+        joints.geometry.attributes.position.needsUpdate = true;
+      }
+
+      /* ================================================================
+   Trajectory visualization
+================================================================ */
+
+      function updateTrajectoryDebug() {
+        if (!S.N || !R.disp) {
+          return;
+        }
+
+        const heading = S.th[R.cf] + R.yaw;
+
+        const cos = Math.cos(heading);
+
+        const sin = Math.sin(heading);
+
+        const movement = input();
+
+        const speed = run() ? 3.4 : 1.4;
+
+        const desired = want.geometry.attributes.position.array;
+
+        const matched = got.geometry.attributes.position.array;
+
+        for (let step = 1; step <= 3; step++) {
+          const time = (step * 10) / Math.max(S.fps, 1);
+
+          const offset = 15 + (step - 1) * 4;
+
+          const localX = S.F[R.cf * S.D + offset] * S.sd[2] + S.mean[offset];
+
+          const localZ =
+            S.F[R.cf * S.D + offset + 1] * S.sd[2] + S.mean[offset + 1];
+
+          const point = (step - 1) * 3;
+
+          desired[point] = R.disp[0] + movement.d[0] * speed * time;
+
+          desired[point + 1] = 0.03;
+
+          desired[point + 2] = R.disp[2] + movement.d[1] * speed * time;
+
+          matched[point] = R.disp[0] + localX * cos + localZ * sin;
+
+          matched[point + 1] = 0.03;
+
+          matched[point + 2] = R.disp[2] - localX * sin + localZ * cos;
+        }
+
+        want.geometry.attributes.position.needsUpdate = true;
+
+        got.geometry.attributes.position.needsUpdate = true;
+      }
+
+      /* ================================================================
+   Camera
+================================================================ */
+
+      function updateCamera(dt) {
+        if (!R.disp) {
+          return;
+        }
+
+        const interpolation = Math.min(1, dt * 4);
+
+        R.cam.x += (R.disp[0] - R.cam.x) * interpolation;
+
+        R.cam.z += (R.disp[2] - R.cam.z) * interpolation;
+
+        cam.position.set(
+          R.cam.x,
+
+          1 + P.zoom * 0.2,
+
+          R.cam.z + P.zoom,
+        );
+
+        cam.lookAt(R.cam.x, 0.95, R.cam.z);
+
+        grid.position.set(
+          Math.round(R.cam.x),
+
+          0,
+
+          Math.round(R.cam.z),
+        );
+      }
+
+      /* ================================================================
+   HUD
+================================================================ */
+
+      function updateHud(dt) {
+        R.hudT += dt;
+
+        R.swT += dt;
+
+        if (R.swT >= 1) {
+          R.rate = R.sw;
+
+          R.sw = 0;
+
+          R.swT = 0;
+        }
+
+        if (R.hudT < 0.25) {
+          return;
+        }
+
+        R.hudT = 0;
+
+        const clipName = S.names2[S.ci[R.cf]] || "animation";
+
+        const frame = R.cf - S.cs[R.cf];
+
+        $("hud").textContent =
+          `${clipName} · frame ${frame} · ` + `switches/sec: ${R.rate}`;
+      }
+
+      /* ================================================================
+   Main loop
+================================================================ */
+
+      let last = performance.now();
+
+      function tick(now) {
+        requestAnimationFrame(tick);
+
+        const dt = Math.min((now - last) / 1000, 0.05);
+
+        last = now;
+
+        if (S.N && R.disp) {
+          advanceAnimation(dt);
+
+          R.t += dt;
+
+          if (R.t >= P.interval) {
+            R.t = 0;
+
+            search();
+          }
+
+          pose(dt);
+
+          updateModel(dt);
+
+          const stickVisible = $("showStick").checked;
+
+          lines.visible = stickVisible;
+
+          joints.visible = stickVisible;
+
+          if (MD.root) {
+            MD.root.visible = !!MD.m && $("showModel").checked;
+          }
+
+          updateDebugGeometry();
+
+          updateTrajectoryDebug();
+
+          updateCamera(dt);
+
+          updateHud(dt);
+        }
+
+        renderer.render(scene, cam);
+      }
+
+      requestAnimationFrame(tick);
+
+      /* ================================================================
+   Animation file input
+================================================================ */
+
+      $("file").onchange = (event) => {
+        load(Array.from(event.target.files || []));
+
+        event.target.value = "";
+      };
+
+      /* ================================================================
+   Drag & drop
+================================================================ */
+
+      view.addEventListener("dragover", (event) => {
+        event.preventDefault();
+      });
+
+      view.addEventListener("drop", (event) => {
+        event.preventDefault();
+
+        const files = Array.from(event.dataTransfer.files || []).filter(
+          (file) => /\.(bvh|fbx)$/i.test(file.name),
+        );
+
+        if (files.length) {
+          load(files);
+        }
+      });
+    </script>
+  </body>
+</html>
